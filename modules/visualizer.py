@@ -12,14 +12,15 @@ class AegisVisualizer:
     def create_confidence_fan(self):
         p5, p25, p50, p75, p95 = np.percentile(self.balances, [5, 25, 50, 75, 95], axis=0)
         fig, ax = plt.subplots(figsize=(12, 7))
-        ax.fill_between(self.timeline, p5, p95, color='gray', alpha=0.15, label="Extreme (5th-95th)")
-        ax.fill_between(self.timeline, p25, p75, color='skyblue', alpha=0.4, label="Likely (25th-75th)")
+        ax.fill_between(self.timeline, p5, p95, color='gray', alpha=0.15, label="Extreme Range")
+        ax.fill_between(self.timeline, p25, p75, color='skyblue', alpha=0.4, label="Likely Range")
         ax.plot(self.timeline, p50, color='#1A237E', lw=3, label="Median Path")
         ax.axvspan(self.inputs.retirement_age - 5, self.inputs.retirement_age + 5, color='orange', alpha=0.1, label="Fragile Decade")
         ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'${x/1e6:.1f}M'))
-        ax.set_title("Wealth Projection: Project Aegis", fontsize=14, fontweight='bold')
-        ax.grid(True, alpha=0.3)
-        ax.legend()
+        ax.set_title("Project Aegis: Wealth Projection Confidence Fan", fontsize=14, fontweight='bold')
+        ax.set_xlabel("Age")
+        ax.set_ylabel("Portfolio Value ($)")
+        ax.legend(loc='upper left')
         return fig
 
     def generate_actionable_summary(self) -> dict:

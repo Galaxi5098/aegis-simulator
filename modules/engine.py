@@ -35,21 +35,33 @@ class StochasticEngine:
         if age < 67: return 0.70 + (age - 62) * (0.30/5)
         return 1.0 + (age - 67) * 0.08
 
-    def run_simulation(self, regime: str = "Steady Path", trials: int = 10000):
-        # Base regime data
+    def _get_regime_data(self, regime: str):
         regimes = {
-            "Steady Path": {"equities": {"mu": 0.09, "sigma": 0.18}, "bonds": {"mu": 0.04, "sigma": 0.07}},
-            "1970s Remix": {"equities": {"mu": 0.06, "sigma": 0.25}, "bonds": {"mu": 0.03, "sigma": 0.12}}
+            "Steady Path": {
+                "equities": {"mu": 0.09, "sigma": 0.18},
+                "bonds": {"mu": 0.04, "sigma": 0.07},
+                "inflation": {"mu": 0.03, "sigma": 0.01}
+            },
+            "1970s Remix": {
+                "equities": {"mu": 0.06, "sigma": 0.25},
+                "bonds": {"mu": 0.03, "sigma": 0.12},
+                "inflation": {"mu": 0.08, "sigma": 0.04}
+            }
         }
-        data = regimes.get(regime, regimes["Steady Path"])
-        
-        # Sentiment adjustment
-        sentiment_map = {"Significantly Above Average": 0.04, "Above Average": 0.02, "Average": 0.0, "Below Average": -0.02, "Significantly Below Average": -0.04}
-        p_mu = sum(self.inputs.asset_weights[a] * data[a]["mu"] for a in self.inputs.asset_weights) + sentiment_map.get(self.inputs.market_sentiment, 0)
+        return regimes.get(regime, regimes["Steady Path"])
+
+    def run_simulation(self, regime: str = "Steady Path", trials: int = 10000):
+        data = self._get_regime_data(regime)
+        sentiment_map = {
+            "Significantly Above Average": 0.04, "Above Average": 0.02,
+            "Average": 0.0, "Below Average": -0.02, "Significantly Below Average": -0.04
+        }
+        sentiment_adj = sentiment_map.get(self.inputs.market_sentiment, 0.0)
+        p_mu = sum(self.inputs.asset_weights[a] * data[a]["mu"] for a in self.inputs.asset_weights) + sentiment_adj
         p_sigma = np.sqrt(sum((self.inputs.asset_weights[a] * data[a]["sigma"])**2 for a in self.inputs.asset_weights))
         
-        # Monthly conversion
-        m_mu, m_sigma = p_mu / 12, p_sigma / np.sqrt(12)
+        monthly_mu = p_mu / 12
+        monthly_sigma = p_sigma / np.sqrt(12)
         
         balances = np.zeros((trials, self.months + 1))
         balances[:, 0] = self.inputs.initial_capital
@@ -57,11 +69,16 @@ class StochasticEngine:
         ss_start_m = (self.inputs.ss_take_age - self.inputs.current_age) * 12
 
         for t in range(self.months):
-            returns = m_mu + m_sigma * np.random.standard_t(df=self.nu, size=trials)
-            flow = (self.inputs.annual_contribution / 12) if t < self.retire_month_idx else -(self.inputs.annual_withdrawal / 12)
-            if t >= ss_start_m: flow += ss_monthly
-            flow += (self.inputs.other_side_income / 12)
-            balances[:, t+1] = (balances[:, t] + flow) * (1 + returns)
+            real_return = monthly_mu + monthly_sigma * np.random.standard_t(df=self.nu, size=trials)
+            net_flow = (self.inputs.annual_contribution / 12) if t < self.retire_month_idx else -(self.inputs.annual_withdrawal / 12)
+            if t >= ss_start_m:
+                net_flow += ss_monthly
+            net_flow += (self.inputs.other_side_income / 12)
+            balances[:, t+1] = (balances[:, t] + net_flow) * (1 + real_return)
 
-        sr = np.mean(np.all(balances > 0, axis=1))
-        return {"balances": balances, "success_rate": sr, "status": "GREEN" if sr > 0.9 else "YELLOW" if sr > 0.75 else "RED"}
+        success_rate = np.mean(np.all(balances > 0, axis=1))
+        return {
+            "balances": balances, 
+            "success_rate": success_rate,
+            "status": "GREEN" if success_rate > 0.9 else "YELLOW" if success_rate > 0.75 else "RED"
+        }

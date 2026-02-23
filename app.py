@@ -9,13 +9,13 @@ st.set_page_config(page_title="Project Aegis", layout="wide", page_icon="🛡️
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("1. Core Portfolio")
-    initial_cap = st.number_input("Portfolio Value ($)", value=400000, step=10000, help="Your total current assets.")
+    initial_cap = st.number_input("Portfolio Value ($)", value=400000, step=10000, help="Your total assets today.")
     curr_age = st.slider("Current Age", 18, 80, 48)
     retire_age = st.slider("Retirement Age", curr_age + 1, 90, 70)
     
     st.header("2. Income & Spending")
-    annual_cont = st.number_input("Annual Savings ($)", value=25000, help="New savings added annually.")
-    annual_draw = st.number_input("Retirement Spending ($)", value=80000, help="Target annual budget.")
+    annual_cont = st.number_input("Annual Savings ($)", value=25000, help="Amount saved per year until retirement.")
+    annual_draw = st.number_input("Retirement Spending ($)", value=80000, help="Annual budget in retirement.")
     ss_amt = st.number_input("Full SS Benefit (Age 67)", value=35000)
     ss_age = st.select_slider("SS Start Age", options=range(62, 71), value=67)
     side_inc = st.number_input("Additional Income ($)", value=0)
@@ -36,7 +36,7 @@ results = StochasticEngine(inputs).run_simulation(regime=regime)
 viz = AegisVisualizer(results["balances"], inputs)
 summary = viz.generate_actionable_summary()
 
-# --- STATUS BANNER (FIXED PARAMETER) ---
+# --- STATUS BANNER ---
 status_cfg = {"GREEN": ("#d4edda", "#155724", "SECURE"), "YELLOW": ("#fff3cd", "#856404", "CAUTION"), "RED": ("#f8d7da", "#721c24", "CRITICAL")}
 bg, txt, lbl = status_cfg[results['status']]
 st.markdown(f'''

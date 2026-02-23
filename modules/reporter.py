@@ -5,10 +5,11 @@ from reportlab.lib.pagesizes import LETTER
 class NarrativeReporter:
     @staticmethod
     def get_summary(results, inputs):
+        status = results['status']
         sr = results['success_rate'] * 100
-        if results['status'] == "GREEN":
-            return f"🛡️ **Status: SECURE ({sr:.1f}%)**\nYour plan is highly resilient. Maintain current strategy."
-        elif results['status'] == "YELLOW":
+        if status == "GREEN":
+            return f"🛡️ **Status: SECURE ({sr:.1f}%)**\nPlan is highly resilient. Maintain current strategy."
+        elif status == "YELLOW":
             return f"⚠️ **Status: CAUTION ({sr:.1f}%)**\nPlan is fragile. Consider delaying SS or increasing savings."
         return f"🚨 **Status: CRITICAL ({sr:.1f}%)**\nHigh depletion risk. Immediate adjustments required."
 
@@ -17,7 +18,7 @@ class ReportGenerator:
     def create_pdf(inputs, success_rate):
         buffer = io.BytesIO()
         p = canvas.Canvas(buffer, pagesize=LETTER)
-        p.drawString(100, 750, f"Aegis Strategy Report - Success: {success_rate*100:.1f}%")
+        p.drawString(100, 750, f"Aegis Strategy Report - Confidence: {success_rate*100:.1f}%")
         p.save()
         buffer.seek(0)
         return buffer
