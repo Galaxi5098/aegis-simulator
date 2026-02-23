@@ -1,29 +1,66 @@
 import streamlit as st
 import pandas as pd
+import json
+import base64
 from modules.engine import InputSchema, StochasticEngine
 from modules.visualizer import AegisVisualizer, SensitivityOptimizer
 from modules.reporter import NarrativeReporter, ReportGenerator
 
 st.set_page_config(page_title="Project Aegis", layout="wide", page_icon="🛡️")
 
+# --- SAVING/LOADING LOGIC ---
+def get_aegis_code(inputs_dict):
+    """Encodes inputs into a shareable string."""
+    json_str = json.dumps(inputs_dict)
+    return base64.b64encode(json_str.encode()).decode()
+
+def decode_aegis_code(code):
+    """Decodes string back into inputs."""
+    try:
+        decoded = base64.b64decode(code).decode()
+        return json.loads(decoded)
+    except:
+        st.sidebar.error("Invalid Aegis Code.")
+        return None
+
 # --- SIDEBAR ---
 with st.sidebar:
+    st.title("🛡️ Aegis Command")
+    
+    # 1. Load Feature
+    load_code = st.text_input("Input Aegis Code to Load Strategy", help="Paste a previously saved code here.")
+    loaded_data = None
+    if load_code:
+        loaded_data = decode_aegis_code(load_code)
+
+    st.divider()
     st.header("1. Core Portfolio")
-    initial_cap = st.number_input("Portfolio Value ($)", value=400000, step=10000, help="Your total assets today.")
-    curr_age = st.slider("Current Age", 18, 80, 48)
-    retire_age = st.slider("Retirement Age", curr_age + 1, 90, 70)
+    # Default to generic values if no code is provided
+    initial_cap = st.number_input("Portfolio Value ($)", value=loaded_data['initial_capital'] if loaded_data else 100000)
+    curr_age = st.slider("Current Age", 18, 80, loaded_data['current_age'] if loaded_data else 45)
+    retire_age = st.slider("Retirement Age", curr_age + 1, 90, loaded_data['retirement_age'] if loaded_data else 65)
     
     st.header("2. Income & Spending")
-    annual_cont = st.number_input("Annual Savings ($)", value=25000, help="Amount saved per year until retirement.")
-    annual_draw = st.number_input("Retirement Spending ($)", value=80000, help="Annual budget in retirement.")
-    ss_amt = st.number_input("Full SS Benefit (Age 67)", value=35000)
-    ss_age = st.select_slider("SS Start Age", options=range(62, 71), value=67)
-    side_inc = st.number_input("Additional Income ($)", value=0)
+    annual_cont = st.number_input("Annual Savings ($)", value=loaded_data['annual_contribution'] if loaded_data else 10000)
+    annual_draw = st.number_input("Retirement Spending ($)", value=loaded_data['annual_withdrawal'] if loaded_data else 50000)
+    ss_amt = st.number_input("Full SS Benefit (Age 67)", value=loaded_data['ss_pia_amount'] if loaded_data else 30000)
+    ss_age = st.select_slider("SS Start Age", options=range(62, 71), value=loaded_data['ss_take_age'] if loaded_data else 67)
     
-    st.header("3. Market Forecast")
-    equity_perc = st.slider("Equity %", 0, 100, 80)
+    # ... [Market Forecast sliders same as before] ...
+    equity_perc = st.slider("Equity %", 0, 100, 70)
     regime = st.selectbox("Market Regime", ["Steady Path", "1970s Remix"])
     sentiment = st.selectbox("Sentiment", ["Significantly Above Average", "Above Average", "Average", "Below Average", "Significantly Below Average"], index=2)
+
+    # 2. Save Feature
+    st.divider()
+    if st.button("Generate Aegis Code"):
+        current_params = {
+            "initial_capital": initial_cap, "current_age": curr_age, "retirement_age": retire_age,
+            "annual_contribution": annual_cont, "annual_withdrawal": annual_draw,
+            "ss_pia_amount": ss_amt, "ss_take_age": ss_age
+        }
+        st.code(get_aegis_code(current_params), language="text")
+        st.caption("Copy this code to 'Save' your session.")
 
 # --- EXECUTION ---
 inputs = InputSchema(
